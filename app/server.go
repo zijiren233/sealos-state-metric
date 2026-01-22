@@ -203,6 +203,7 @@ func (s *Server) setupLeaderElection() error {
 	// Create cancellable context and done channel for cleanup
 	s.leMu.Lock()
 	defer s.leMu.Unlock()
+
 	leCtx, leCtxCancel := context.WithCancel(s.serverCtx)
 	s.leCtxCancel = leCtxCancel
 	s.leDoneCh = make(chan struct{})
@@ -227,6 +228,7 @@ func (s *Server) setupLeaderElection() error {
 func (s *Server) stopLeaderElection() {
 	s.leMu.Lock()
 	defer s.leMu.Unlock()
+
 	leCtxCancel := s.leCtxCancel
 	leDoneCh := s.leDoneCh
 
