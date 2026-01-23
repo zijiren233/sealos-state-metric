@@ -11,6 +11,7 @@ import (
 	_ "github.com/zijiren233/sealos-state-metric/pkg/collector/all" // Import all collectors
 	"github.com/zijiren233/sealos-state-metric/pkg/config"
 	"github.com/zijiren233/sealos-state-metric/pkg/logger"
+	"github.com/zijiren233/sealos-state-metric/pkg/pprof"
 )
 
 func main() {
@@ -55,11 +56,17 @@ func main() {
 	// Create server
 	server := app.NewServer(cfg, configContent)
 
+	// Create pprof server
+	var pprofServer *pprof.Server
+	if cfg.Pprof.Enabled {
+		pprofServer = pprof.NewServer(cfg.Pprof.Port)
+	}
+
 	// Setup config reloader if config path is provided
 	var reloader *config.Reloader
 	if cfg.ConfigPath != "" {
 		reloader, err = config.NewReloader(cfg.ConfigPath, func(newConfigContent []byte) error {
-			return handleReload(cliArgs, newConfigContent, server)
+			return handleReload(cliArgs, newConfigContent, server, pprofServer)
 		})
 		if err != nil {
 			log.WithError(err).Fatal("Failed to create config reloader")
@@ -73,6 +80,18 @@ func main() {
 	// Initialize server first (this may take several seconds)
 	if err := server.Init(ctx); err != nil {
 		log.WithError(err).Fatal("Failed to initialize server")
+	}
+
+	// Start pprof server if enabled
+	if pprofServer != nil {
+		if err := pprofServer.Start(ctx); err != nil {
+			log.WithError(err).Fatal("Failed to start pprof server")
+		}
+		defer func() {
+			if err := pprofServer.Stop(); err != nil {
+				log.WithError(err).Error("Failed to stop pprof server")
+			}
+		}()
 	}
 
 	// Start config reloader AFTER server is fully initialized
@@ -97,32 +116,93 @@ func main() {
 	log.Info("Server exited successfully")
 }
 
-// handleReload handles configuration reload for both logger and server
-func handleReload(cliArgs []string, newConfigContent []byte, server *app.Server) error {
-	// Load new configuration
-	newConfig, err := config.LoadGlobalConfig(config.LoadOptions{
-		Args:          cliArgs,
-		ConfigContent: newConfigContent,
-		DisableExit:   true, // Don't exit during reload
-	})
+// handleReload handles configuration reload for logger, server and pprof
+func handleReload(
+	cliArgs []string,
+	newConfigContent []byte,
+	server *app.Server,
+	pprofServer *pprof.Server,
+) error {
+	// Load and validate new configuration
+	newConfig, err := loadAndValidateConfig(cliArgs, newConfigContent)
 	if err != nil {
 		return err
 	}
 
-	// Validate new configuration
-	if err := newConfig.Validate(); err != nil {
-		return err
+	// Reload logger
+	reloadLogger(newConfig)
+
+	// Reload pprof server
+	reloadPprofServer(pprofServer, newConfig)
+
+	// Reload main server
+	return server.Reload(newConfigContent, newConfig)
+}
+
+// loadAndValidateConfig loads and validates configuration
+func loadAndValidateConfig(cliArgs []string, configContent []byte) (*config.GlobalConfig, error) {
+	newConfig, err := config.LoadGlobalConfig(config.LoadOptions{
+		Args:          cliArgs,
+		ConfigContent: configContent,
+		DisableExit:   true,
+	})
+	if err != nil {
+		return nil, err
 	}
 
-	// Reload logger first
+	if err := newConfig.Validate(); err != nil {
+		return nil, err
+	}
+
+	return newConfig, nil
+}
+
+// reloadLogger reloads logger configuration
+func reloadLogger(cfg *config.GlobalConfig) {
 	logger.InitLog(
-		logger.WithDebug(newConfig.Logging.Debug),
-		logger.WithLevel(newConfig.Logging.Level),
-		logger.WithFormat(newConfig.Logging.Format),
+		logger.WithDebug(cfg.Logging.Debug),
+		logger.WithLevel(cfg.Logging.Level),
+		logger.WithFormat(cfg.Logging.Format),
 	)
 
 	log.Info("Logger reloaded")
+}
 
-	// Reload server
-	return server.Reload(newConfigContent, newConfig)
+// reloadPprofServer reloads pprof server based on new configuration
+func reloadPprofServer(pprofServer *pprof.Server, cfg *config.GlobalConfig) {
+	if pprofServer != nil {
+		// Pprof server is running
+		if !cfg.Pprof.Enabled {
+			// Pprof disabled, stop it
+			if err := pprofServer.Stop(); err != nil {
+				log.WithError(err).Error("Failed to stop pprof server")
+			}
+
+			log.Info("Pprof server stopped")
+
+			return
+		}
+
+		// Pprof still enabled, reload with new config
+		if err := pprofServer.Reload(context.Background(), cfg.Pprof.Port); err != nil {
+			log.WithError(err).Error("Failed to reload pprof server")
+		} else {
+			log.Info("Pprof server reloaded")
+		}
+
+		return
+	}
+
+	// Pprof was not running
+	if cfg.Pprof.Enabled {
+		// Start new pprof server
+		// Note: This starts a detached server since we can't update the pointer
+		// The server will continue running until the process exits
+		newServer := pprof.NewServer(cfg.Pprof.Port)
+		if err := newServer.Start(context.Background()); err != nil {
+			log.WithError(err).Error("Failed to start pprof server after reload")
+		} else {
+			log.Info("Pprof server started after reload")
+		}
+	}
 }

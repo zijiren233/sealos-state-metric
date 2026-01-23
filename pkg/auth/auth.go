@@ -284,6 +284,7 @@ func (a *Authenticator) authorizeRequestCached(
 
 			a.authzCache.mu.RUnlock()
 			log.WithField("allowed", allowed).Debug("Authorization cache hit")
+
 			return allowed, nil
 		}
 	}

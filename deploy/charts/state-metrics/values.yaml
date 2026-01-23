@@ -94,6 +94,11 @@ config:
     metricsPath: "/metrics"
     healthPath: "/health"
 
+  # Pprof configuration (hot-reloadable, binds to 127.0.0.1 only)
+  pprof:
+    enabled: false
+    port: 6060
+
   kubernetes:
     kubeconfig: ""
     qps: 50

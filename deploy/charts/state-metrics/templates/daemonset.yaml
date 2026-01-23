@@ -52,6 +52,12 @@ spec:
               containerPort: 8080
               protocol: TCP
             {{- end }}
+            {{- if .Values.config.pprof.enabled }}
+            - name: pprof
+              containerPort: {{ .Values.config.pprof.port }}
+              protocol: TCP
+              hostPort: {{ .Values.config.pprof.port }}
+            {{- end }}
           env:
             - name: POD_NAME
               valueFrom:

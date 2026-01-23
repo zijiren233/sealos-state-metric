@@ -27,6 +27,9 @@ type GlobalConfig struct {
 	// Debug server configuration (hot-reloadable, no auth)
 	DebugServer DebugServerConfig `yaml:"debugServer" embed:"" prefix:"debug-server-" envprefix:"DEBUG_SERVER_"`
 
+	// Pprof configuration (hot-reloadable)
+	Pprof PprofConfig `yaml:"pprof" embed:"" prefix:"pprof-" envprefix:"PPROF_"`
+
 	// Kubernetes client configuration
 	Kubernetes KubernetesConfig `yaml:"kubernetes" embed:"" prefix:"" envprefix:"KUBERNETES_"`
 
@@ -57,9 +60,10 @@ type GlobalConfig struct {
 
 // ApplyHotReload applies hot-reloadable fields from newConfig
 // Note: Server and Logging configs require restart and are not updated
-// DebugServer config is hot-reloadable
+// DebugServer and Pprof configs are hot-reloadable
 func (c *GlobalConfig) ApplyHotReload(newConfig *GlobalConfig) {
 	c.DebugServer = newConfig.DebugServer
+	c.Pprof = newConfig.Pprof
 	c.Kubernetes = newConfig.Kubernetes
 	c.Metrics = newConfig.Metrics
 	c.LeaderElection = newConfig.LeaderElection
@@ -127,6 +131,19 @@ func (c DebugServerConfig) Equal(other DebugServerConfig) bool {
 		c.Address == other.Address &&
 		c.MetricsPath == other.MetricsPath &&
 		c.HealthPath == other.HealthPath
+}
+
+// PprofConfig contains pprof server configuration for profiling
+// This config is hot-reloadable
+type PprofConfig struct {
+	Enabled bool `yaml:"enabled" name:"enabled" env:"ENABLED" default:"false" help:"Enable pprof server for profiling"`
+	Port    int  `yaml:"port"    name:"port"    env:"PORT"    default:"6060"  help:"Pprof server port (binds to 127.0.0.1)"`
+}
+
+// Equal checks if two PprofConfig are equal
+func (c PprofConfig) Equal(other PprofConfig) bool {
+	return c.Enabled == other.Enabled &&
+		c.Port == other.Port
 }
 
 // KubernetesConfig contains Kubernetes client configuration
