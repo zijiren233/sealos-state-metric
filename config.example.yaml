@@ -24,8 +24,6 @@ metrics:
 leaderElection:
   # Enable leader election (useful for deployment mode with multiple replicas)
   enabled: true
-  # Namespace for leader election lease (empty uses current namespace)
-  namespace: ""
   # Name of the leader election lease
   leaseName: "state-metrics"
   # Leader election lease duration
