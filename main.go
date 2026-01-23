@@ -7,11 +7,11 @@ import (
 	"syscall"
 
 	log "github.com/sirupsen/logrus"
-	"github.com/zijiren233/sealos-state-metric/app"
 	_ "github.com/zijiren233/sealos-state-metric/pkg/collector/all" // Import all collectors
 	"github.com/zijiren233/sealos-state-metric/pkg/config"
 	"github.com/zijiren233/sealos-state-metric/pkg/logger"
 	"github.com/zijiren233/sealos-state-metric/pkg/pprof"
+	"github.com/zijiren233/sealos-state-metric/server"
 )
 
 func main() {
@@ -54,7 +54,7 @@ func main() {
 	}
 
 	// Create server
-	server := app.NewServer(cfg, configContent)
+	srv := server.New(cfg, configContent)
 
 	// Create pprof server
 	var pprofServer *pprof.Server
@@ -66,7 +66,7 @@ func main() {
 	var reloader *config.Reloader
 	if cfg.ConfigPath != "" {
 		reloader, err = config.NewReloader(cfg.ConfigPath, func(newConfigContent []byte) error {
-			return handleReload(cliArgs, newConfigContent, server, pprofServer)
+			return handleReload(cliArgs, newConfigContent, srv, pprofServer)
 		})
 		if err != nil {
 			log.WithError(err).Fatal("Failed to create config reloader")
@@ -78,7 +78,7 @@ func main() {
 	defer stop()
 
 	// Initialize server first (this may take several seconds)
-	if err := server.Init(ctx); err != nil {
+	if err := srv.Init(ctx); err != nil {
 		log.WithError(err).Fatal("Failed to initialize server")
 	}
 
@@ -109,7 +109,7 @@ func main() {
 	}
 
 	// Start HTTP server and wait (blocks until context is cancelled or error)
-	if err := server.Serve(); err != nil {
+	if err := srv.Serve(); err != nil {
 		log.WithError(err).Fatal("Server exited with error")
 	}
 
@@ -120,7 +120,7 @@ func main() {
 func handleReload(
 	cliArgs []string,
 	newConfigContent []byte,
-	server *app.Server,
+	srv *server.Server,
 	pprofServer *pprof.Server,
 ) error {
 	// Load and validate new configuration
@@ -136,7 +136,7 @@ func handleReload(
 	reloadPprofServer(pprofServer, newConfig)
 
 	// Reload main server
-	return server.Reload(newConfigContent, newConfig)
+	return srv.Reload(newConfigContent, newConfig)
 }
 
 // loadAndValidateConfig loads and validates configuration
