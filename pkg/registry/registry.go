@@ -178,10 +178,7 @@ func (r *Registry) createCollectors(cfg *InitConfig, action string) {
 		}
 
 		r.collectors[name] = c
-		logger.WithFields(log.Fields{
-			"name": name,
-			"type": c.Type(),
-		}).Info("Collector created")
+		logger.WithField("name", name).Info("Collector created")
 	}
 }
 

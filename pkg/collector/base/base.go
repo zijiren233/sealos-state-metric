@@ -9,14 +9,12 @@ import (
 
 	"github.com/prometheus/client_golang/prometheus"
 	log "github.com/sirupsen/logrus"
-	"github.com/zijiren233/sealos-state-metric/pkg/collector"
 )
 
 // BaseCollector provides common functionality for all collectors.
 // It implements the basic lifecycle management and state tracking.
 type BaseCollector struct {
 	name                   string
-	collectorType          collector.CollectorType
 	requiresLeaderElection bool
 	logger                 *log.Entry
 	waitReadyOnCollect     bool          // If true, Collect will wait for collector to be ready
@@ -67,13 +65,11 @@ func WithWaitReadyTimeout(timeout time.Duration) BaseCollectorOption {
 // NewBaseCollector creates a new BaseCollector instance with functional options.
 func NewBaseCollector(
 	name string,
-	collectorType collector.CollectorType,
 	logger *log.Entry,
 	opts ...BaseCollectorOption,
 ) *BaseCollector {
 	b := &BaseCollector{
 		name:                   name,
-		collectorType:          collectorType,
 		requiresLeaderElection: true, // Default: require leader election
 		logger:                 logger,
 		waitReadyOnCollect:     false,           // Default: don't wait for ready on collect
@@ -92,11 +88,6 @@ func NewBaseCollector(
 // Name returns the collector name
 func (b *BaseCollector) Name() string {
 	return b.name
-}
-
-// Type returns the collector type
-func (b *BaseCollector) Type() collector.CollectorType {
-	return b.collectorType
 }
 
 // RequiresLeaderElection returns whether this collector requires leader election
@@ -152,10 +143,7 @@ func (b *BaseCollector) Start(ctx context.Context) error {
 	lifecycle := b.lifecycle
 	b.mu.Unlock()
 
-	b.logger.WithFields(log.Fields{
-		"name": b.name,
-		"type": b.collectorType,
-	}).Info("Collector started")
+	b.logger.WithField("name", b.name).Info("Collector started")
 
 	// Call lifecycle OnStart hook if set
 	if lifecycle != nil {

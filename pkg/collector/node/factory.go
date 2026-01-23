@@ -33,7 +33,6 @@ func NewCollector(factoryCtx *collector.FactoryContext) (collector.Collector, er
 	c := &Collector{
 		BaseCollector: base.NewBaseCollector(
 			collectorName,
-			collector.TypeInformer,
 			factoryCtx.Logger,
 			base.WithWaitReadyOnCollect(true),
 		),

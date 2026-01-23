@@ -10,29 +10,12 @@ import (
 	"k8s.io/client-go/rest"
 )
 
-// CollectorType defines the type of collector
-type CollectorType string
-
-const (
-	// TypeInformer represents an informer-based collector that watches Kubernetes resources in real-time
-	TypeInformer CollectorType = "informer"
-
-	// TypePolling represents a polling-based collector that periodically queries data
-	TypePolling CollectorType = "polling"
-
-	// TypeWatcher represents an event-watching collector
-	TypeWatcher CollectorType = "watcher"
-)
-
 // Collector is the core interface for all metric collectors.
 // It follows the simple and elegant design from node_exporter while
 // being tailored for Kubernetes monitoring.
 type Collector interface {
 	// Name returns the unique identifier of this collector
 	Name() string
-
-	// Type returns the collector type (informer, polling, or watcher)
-	Type() CollectorType
 
 	// RequiresLeaderElection returns true if this collector should only run on the leader instance.
 	// Collectors that monitor cluster-wide resources should return true.

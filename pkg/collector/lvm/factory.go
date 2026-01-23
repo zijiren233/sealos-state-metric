@@ -34,7 +34,6 @@ func NewCollector(factoryCtx *collector.FactoryContext) (collector.Collector, er
 	c := &Collector{
 		BaseCollector: base.NewBaseCollector(
 			collectorName,
-			collector.TypePolling,
 			factoryCtx.Logger,
 			base.WithLeaderElection(false), // LVM collector runs on each node
 			base.WithWaitReadyOnCollect(true),
