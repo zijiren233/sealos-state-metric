@@ -29,6 +29,15 @@ serviceMonitor:
   metricRelabelings: []
   relabelings: []
 
+vmServiceScrape:
+  enabled: false
+  namespace: ""
+  labels: {}
+  interval: 30s
+  scrapeTimeout: 10s
+  metricRelabelConfigs: []
+  relabelConfigs: []
+
 # Common application configuration (shared by both Deployment and DaemonSet)
 config:
   server:

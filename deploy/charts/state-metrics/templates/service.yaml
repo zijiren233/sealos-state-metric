@@ -1,9 +1,11 @@
+{{- if .Values.deploymentConfig.enabledCollectors }}
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "state-metrics.fullname" . }}
+  name: {{ include "state-metrics.fullname" . }}-deployment
   labels:
     {{- include "state-metrics.labels" . | nindent 4 }}
+    app.kubernetes.io/component: deployment
   {{- with .Values.service.annotations }}
   annotations:
     {{- toYaml . | nindent 4 }}
@@ -17,3 +19,29 @@ spec:
       name: http
   selector:
     {{- include "state-metrics.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: deployment
+{{- end }}
+---
+{{- if .Values.daemonsetConfig.enabledCollectors }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "state-metrics.fullname" . }}-daemonset
+  labels:
+    {{- include "state-metrics.labels" . | nindent 4 }}
+    app.kubernetes.io/component: daemonset
+  {{- with .Values.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.service.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "state-metrics.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: daemonset
+{{- end }}
