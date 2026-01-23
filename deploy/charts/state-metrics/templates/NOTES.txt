@@ -1,31 +1,34 @@
-1. Get the application URL by running these commands:
-{{- if contains "NodePort" .Values.service.type }}
-  export NODE_PORT=$(kubectl get --namespace {{ .Release.Namespace }} -o jsonpath="{.spec.ports[0].nodePort}" services {{ include "state-metrics.fullname" . }})
-  export NODE_IP=$(kubectl get nodes --namespace {{ .Release.Namespace }} -o jsonpath="{.items[0].status.addresses[0].address}")
-  echo http://$NODE_IP:$NODE_PORT
-{{- else if contains "LoadBalancer" .Values.service.type }}
-     NOTE: It may take a few minutes for the LoadBalancer IP to be available.
-           You can watch the status of by running 'kubectl get --namespace {{ .Release.Namespace }} svc -w {{ include "state-metrics.fullname" . }}'
-  export SERVICE_IP=$(kubectl get svc --namespace {{ .Release.Namespace }} {{ include "state-metrics.fullname" . }} --template "{{"{{ range (index .status.loadBalancer.ingress 0) }}{{.}}{{ end }}"}}")
-  echo http://$SERVICE_IP:{{ .Values.service.port }}
-{{- else if contains "ClusterIP" .Values.service.type }}
-  export POD_NAME=$(kubectl get pods --namespace {{ .Release.Namespace }} -l "app.kubernetes.io/name={{ include "state-metrics.name" . }},app.kubernetes.io/instance={{ .Release.Name }}" -o jsonpath="{.items[0].metadata.name}")
-  export CONTAINER_PORT=$(kubectl get pod --namespace {{ .Release.Namespace }} $POD_NAME -o jsonpath="{.spec.containers[0].ports[0].containerPort}")
-  echo "Visit http://127.0.0.1:9090/metrics to view metrics"
-  kubectl --namespace {{ .Release.Namespace }} port-forward $POD_NAME 9090:$CONTAINER_PORT
+Thank you for installing {{ .Chart.Name }}!
+
+Your release is named {{ .Release.Name }}.
+
+Enabled collectors: {{ .Values.config.enabledCollectors | join ", " }}
+
+Deployment mode:
+{{- $deploymentEnabled := eq (include "state-metrics.deploymentEnabled" .) "true" }}
+{{- $daemonsetEnabled := eq (include "state-metrics.daemonsetEnabled" .) "true" }}
+{{- if and $deploymentEnabled $daemonsetEnabled }}
+  - Deployment (leader election collectors): {{ include "state-metrics.deploymentCollectors" . }}
+  - DaemonSet (node-level collectors): {{ include "state-metrics.daemonsetCollectors" . }}
+{{- else if $deploymentEnabled }}
+  - Deployment only: {{ include "state-metrics.deploymentCollectors" . }}
+{{- else if $daemonsetEnabled }}
+  - DaemonSet only: {{ include "state-metrics.daemonsetCollectors" . }}
+{{- else }}
+  - No collectors enabled!
 {{- end }}
 
-2. Check the status of your deployment:
-  kubectl --namespace {{ .Release.Namespace }} get pods -l "app.kubernetes.io/name={{ include "state-metrics.name" . }},app.kubernetes.io/instance={{ .Release.Name }}"
-
-3. View logs:
-  kubectl --namespace {{ .Release.Namespace }} logs -l "app.kubernetes.io/name={{ include "state-metrics.name" . }},app.kubernetes.io/instance={{ .Release.Name }}"
-
-{{- if .Values.serviceMonitor.enabled }}
-4. ServiceMonitor for Prometheus Operator has been created. Make sure you have Prometheus Operator installed.
+To get the status of your deployment:
+{{- if $deploymentEnabled }}
+  kubectl get deployment {{ include "state-metrics.fullname" . }}-deployment -n {{ .Release.Namespace }}
+{{- end }}
+{{- if $daemonsetEnabled }}
+  kubectl get daemonset {{ include "state-metrics.fullname" . }}-daemonset -n {{ .Release.Namespace }}
 {{- end }}
 
-Enabled collectors: {{ join ", " .Values.config.enabledCollectors }}
-{{- if .Values.config.leaderElection.enabled }}
-Leader election: enabled (namespace: {{ .Values.config.leaderElection.namespace | default .Release.Namespace }})
-{{- end }}
+To access the metrics endpoint:
+  kubectl port-forward -n {{ .Release.Namespace }} svc/{{ include "state-metrics.fullname" . }} {{ .Values.service.port }}:{{ .Values.service.port }}
+
+Then visit http://localhost:{{ .Values.service.port }}/metrics in your browser.
+
+For more information, visit: https://github.com/zijiren233/sealos-state-metric

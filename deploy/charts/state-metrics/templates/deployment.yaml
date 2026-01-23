@@ -1,24 +1,27 @@
-{{- if eq .Values.deploymentMode "deployment" }}
+{{- if .Values.deploymentConfig.enabledCollectors }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "state-metrics.fullname" . }}
+  name: {{ include "state-metrics.fullname" . }}-deployment
   labels:
     {{- include "state-metrics.labels" . | nindent 4 }}
+    app.kubernetes.io/component: deployment
 spec:
-  replicas: {{ .Values.replicaCount }}
+  replicas: {{ .Values.deploymentConfig.replicaCount }}
   selector:
     matchLabels:
       {{- include "state-metrics.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: deployment
   template:
     metadata:
       annotations:
-        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
-        {{- with .Values.podAnnotations }}
+        checksum/config: {{ include (print $.Template.BasePath "/configmap-deployment.yaml") . | sha256sum }}
+        {{- with .Values.deploymentConfig.podAnnotations }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
       labels:
         {{- include "state-metrics.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: deployment
     spec:
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
@@ -26,14 +29,14 @@ spec:
       {{- end }}
       serviceAccountName: {{ include "state-metrics.serviceAccountName" . }}
       securityContext:
-        {{- toYaml .Values.podSecurityContext | nindent 8 }}
-      {{- with .Values.priorityClassName }}
+        {{- toYaml .Values.deploymentConfig.podSecurityContext | nindent 8 }}
+      {{- with .Values.deploymentConfig.priorityClassName }}
       priorityClassName: {{ . }}
       {{- end }}
       containers:
         - name: {{ .Chart.Name }}
           securityContext:
-            {{- toYaml .Values.securityContext | nindent 12 }}
+            {{- toYaml .Values.deploymentConfig.securityContext | nindent 12 }}
           image: {{ include "state-metrics.image" . }}
           imagePullPolicy: {{ .Values.imagePullPolicy }}
           args:
@@ -57,24 +60,24 @@ spec:
               mountPath: /config
               readOnly: true
           livenessProbe:
-            {{- toYaml .Values.livenessProbe | nindent 12 }}
+            {{- toYaml .Values.deploymentConfig.livenessProbe | nindent 12 }}
           readinessProbe:
-            {{- toYaml .Values.readinessProbe | nindent 12 }}
+            {{- toYaml .Values.deploymentConfig.readinessProbe | nindent 12 }}
           resources:
-            {{- toYaml .Values.resources | nindent 12 }}
+            {{- toYaml .Values.deploymentConfig.resources | nindent 12 }}
       volumes:
         - name: config
           configMap:
-            name: {{ include "state-metrics.fullname" . }}
-      {{- with .Values.nodeSelector }}
+            name: {{ include "state-metrics.fullname" . }}-deployment
+      {{- with .Values.deploymentConfig.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- with .Values.affinity }}
+      {{- with .Values.deploymentConfig.affinity }}
       affinity:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- with .Values.tolerations }}
+      {{- with .Values.deploymentConfig.tolerations }}
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}

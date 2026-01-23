@@ -80,7 +80,7 @@ func (c KubernetesConfig) Equal(other KubernetesConfig) bool {
 
 // MetricsConfig contains Prometheus metrics configuration
 type MetricsConfig struct {
-	Namespace string `yaml:"namespace" name:"namespace" env:"NAMESPACE" envDefault:"sealos" default:"sealos" help:"Prometheus metrics namespace"`
+	Namespace string `yaml:"namespace" name:"namespace" env:"NAMESPACE" help:"Prometheus metrics namespace (optional)"`
 }
 
 // LeaderElectionConfig contains leader election configuration
@@ -213,10 +213,6 @@ func (l *ConfigLoader) loadFromYAML(cfg *GlobalConfig) error {
 func (c *GlobalConfig) Validate() error {
 	if c.Server.Address == "" {
 		return errors.New("server.address cannot be empty")
-	}
-
-	if c.Metrics.Namespace == "" {
-		return errors.New("metrics.namespace cannot be empty")
 	}
 
 	// Auto-disable leader election if namespace is empty

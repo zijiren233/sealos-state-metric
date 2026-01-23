@@ -219,6 +219,10 @@ func (b *BaseCollector) IsStarted() bool {
 // SetReady marks the collector as ready to collect metrics
 // Note: Once ready, the collector cannot become not-ready again (except through Stop/Start cycle)
 func (b *BaseCollector) SetReady() {
+	if b.ready.Load() {
+		return
+	}
+
 	b.mu.Lock()
 	defer b.mu.Unlock()
 

@@ -1,23 +1,26 @@
-{{- if eq .Values.deploymentMode "daemonset" }}
+{{- if .Values.daemonsetConfig.enabledCollectors }}
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
-  name: {{ include "state-metrics.fullname" . }}
+  name: {{ include "state-metrics.fullname" . }}-daemonset
   labels:
     {{- include "state-metrics.labels" . | nindent 4 }}
+    app.kubernetes.io/component: daemonset
 spec:
   selector:
     matchLabels:
       {{- include "state-metrics.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: daemonset
   template:
     metadata:
       annotations:
-        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
-        {{- with .Values.podAnnotations }}
+        checksum/config: {{ include (print $.Template.BasePath "/configmap-daemonset.yaml") . | sha256sum }}
+        {{- with .Values.daemonsetConfig.podAnnotations }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
       labels:
         {{- include "state-metrics.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: daemonset
     spec:
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
@@ -25,14 +28,19 @@ spec:
       {{- end }}
       serviceAccountName: {{ include "state-metrics.serviceAccountName" . }}
       securityContext:
-        {{- toYaml .Values.podSecurityContext | nindent 8 }}
-      {{- with .Values.priorityClassName }}
+        {{- toYaml .Values.daemonsetConfig.podSecurityContext | nindent 8 }}
+      {{- with .Values.daemonsetConfig.priorityClassName }}
       priorityClassName: {{ . }}
       {{- end }}
       containers:
         - name: {{ .Chart.Name }}
+          {{- if has "lvm" .Values.daemonsetConfig.enabledCollectors }}
           securityContext:
-            {{- toYaml .Values.securityContext | nindent 12 }}
+            privileged: true
+          {{- else }}
+          securityContext:
+            {{- toYaml .Values.daemonsetConfig.securityContext | nindent 12 }}
+          {{- end }}
           image: {{ include "state-metrics.image" . }}
           imagePullPolicy: {{ .Values.imagePullPolicy }}
           args:
@@ -59,25 +67,46 @@ spec:
             - name: config
               mountPath: /config
               readOnly: true
+            {{- if has "lvm" .Values.daemonsetConfig.enabledCollectors }}
+            - name: dev
+              mountPath: /dev
+            - name: lvm-config
+              mountPath: /etc/lvm
+            - name: kubelet
+              mountPath: /var/lib/kubelet
+              mountPropagation: Bidirectional
+            {{- end }}
           livenessProbe:
-            {{- toYaml .Values.livenessProbe | nindent 12 }}
+            {{- toYaml .Values.daemonsetConfig.livenessProbe | nindent 12 }}
           readinessProbe:
-            {{- toYaml .Values.readinessProbe | nindent 12 }}
+            {{- toYaml .Values.daemonsetConfig.readinessProbe | nindent 12 }}
           resources:
-            {{- toYaml .Values.resources | nindent 12 }}
+            {{- toYaml .Values.daemonsetConfig.resources | nindent 12 }}
       volumes:
         - name: config
           configMap:
-            name: {{ include "state-metrics.fullname" . }}
-      {{- with .Values.nodeSelector }}
+            name: {{ include "state-metrics.fullname" . }}-daemonset
+        {{- if has "lvm" .Values.daemonsetConfig.enabledCollectors }}
+        - name: dev
+          hostPath:
+            path: /dev
+        - name: lvm-config
+          hostPath:
+            path: /etc/lvm
+        - name: kubelet
+          hostPath:
+            path: /var/lib/kubelet
+            type: Directory
+        {{- end }}
+      {{- with .Values.daemonsetConfig.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- with .Values.affinity }}
+      {{- with .Values.daemonsetConfig.affinity }}
       affinity:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- with .Values.tolerations }}
+      {{- with .Values.daemonsetConfig.tolerations }}
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
