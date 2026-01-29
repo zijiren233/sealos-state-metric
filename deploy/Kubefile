@@ -1,4 +1,5 @@
-FROM scratch
+FROM --platform=$BUILDPLATFORM scratch
+ARG TARGETARCH
 COPY registry_${TARGETARCH} registry
 COPY install.sh install.sh
 COPY charts charts
