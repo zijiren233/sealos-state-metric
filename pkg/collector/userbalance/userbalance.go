@@ -93,22 +93,48 @@ func (c *Collector) Poll(ctx context.Context) error {
 		balance, err := c.QueryBalance(user)
 		if err != nil {
 			c.logger.WithFields(log.Fields{
-				"provider": c.pgClient,
-				"user_id":  user.Uid,
+				"user_id": user.Uid,
 			}).WithError(err).Error("Failed to query sealos user balance")
 
 			continue
 		}
 
-		key := string(account.Provider) + ":" + account.AccountID
+		key := string(user.Region) + ":" + user.Uid
 		c.balances[key] = balance
 
 		c.logger.WithFields(log.Fields{
-			"provider":   account.Provider,
-			"account_id": account.AccountID,
-			"balance":    balance,
-		}).Debug("Cloud balance updated")
+			"region":  user.Region,
+			"uid":     user.Uid,
+			"balance": balance,
+		}).Debug("User balance updated")
 	}
 
 	return nil
+}
+
+// collect implements the collect method for Prometheus
+func (c *Collector) collect(ch chan<- prometheus.Metric) {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	for _, user := range c.config.UserConfig {
+		key := string(user.Region) + ":" + user.Uid
+
+		balance, exists := c.balances[key]
+		if !exists {
+			continue
+		}
+
+		ch <- prometheus.MustNewConstMetric(
+			c.balanceGauge,
+			prometheus.GaugeValue,
+			balance,
+			user.Region,
+			user.UUID,
+			user.Uid,
+			user.Owner,
+			user.Type,
+			user.Level,
+		)
+	}
 }
