@@ -50,11 +50,13 @@ func NewCollector(factoryCtx *collector.FactoryContext) (collector.Collector, er
 					Debug("Failed to load postgres client")
 				return fmt.Errorf("failed to initialize postgres client: %w", err)
 			}
+
 			c.pgClient = pgClient
 			// Start background polling
 			go c.pollLoop(ctx)
 
 			c.logger.Info("UserBalance collector started successfully")
+
 			return nil
 		},
 		CollectFunc: c.collect,
@@ -63,7 +65,9 @@ func NewCollector(factoryCtx *collector.FactoryContext) (collector.Collector, er
 				c.pgClient.Close()
 				c.logger.Debug("Database connection closed")
 			}
+
 			c.pgClient = nil
+
 			return nil
 		},
 	})

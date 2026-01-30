@@ -77,6 +77,7 @@ func (c *Collector) Poll(ctx context.Context) error {
 	}
 
 	c.logger.WithField("count", len(c.config.Accounts)).Info("Starting cloud balance checks")
+
 	newBalances := make(map[string]float64)
 	for _, account := range c.config.Accounts {
 		select {
@@ -104,9 +105,11 @@ func (c *Collector) Poll(ctx context.Context) error {
 			"balance":    balance,
 		}).Debug("Cloud balance updated")
 	}
+
 	c.mu.Lock()
 	c.balances = newBalances
 	c.mu.Unlock()
+
 	return nil
 }
 

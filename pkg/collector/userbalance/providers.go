@@ -2,13 +2,15 @@ package userbalance
 
 import (
 	"context"
+	"errors"
 	"fmt"
 )
 
 func (c *Collector) QueryBalance(user UserConfig) (float64, error) {
 	if c.pgClient == nil {
-		return 0, fmt.Errorf("database client is not initialized")
+		return 0, errors.New("database client is not initialized")
 	}
+
 	query := `
         SELECT 
             u.uid,
@@ -21,9 +23,13 @@ func (c *Collector) QueryBalance(user UserConfig) (float64, error) {
         LEFT JOIN "Account" a ON u.uid = a."userUid"
         WHERE u.id = $1
     `
-	var uid, id, name, encryptBalance string
-	var balance, deductionBalance int64
-	err := c.pgClient.QueryRow(context.Background(), query, user.Uid).Scan(
+
+	var (
+		uid, id, name, encryptBalance string
+		balance, deductionBalance     int64
+	)
+
+	err := c.pgClient.QueryRow(context.Background(), query, user.UID).Scan(
 		&uid,
 		&id,
 		&name,
@@ -34,6 +40,8 @@ func (c *Collector) QueryBalance(user UserConfig) (float64, error) {
 	if err != nil {
 		return 0, fmt.Errorf("query user balance failed: %w", err)
 	}
+
 	actualBalance := float64(balance-deductionBalance) / 1000000
+
 	return actualBalance, nil
 }

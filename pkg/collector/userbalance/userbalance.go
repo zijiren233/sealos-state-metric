@@ -79,6 +79,7 @@ func (c *Collector) Poll(ctx context.Context) error {
 	}
 
 	c.logger.WithField("count", len(c.config.UserConfig)).Info("Starting cloud balance checks")
+
 	newBalances := make(map[string]float64)
 	for _, user := range c.config.UserConfig {
 		select {
@@ -90,24 +91,26 @@ func (c *Collector) Poll(ctx context.Context) error {
 		balance, err := c.QueryBalance(user)
 		if err != nil {
 			c.logger.WithFields(log.Fields{
-				"user_id": user.Uid,
+				"user_id": user.UID,
 			}).WithError(err).Error("Failed to query sealos user balance")
 
 			continue
 		}
 
-		key := string(user.Region) + ":" + user.Uid
+		key := user.Region + ":" + user.UID
 		newBalances[key] = balance
 
 		c.logger.WithFields(log.Fields{
 			"region":  user.Region,
-			"uid":     user.Uid,
+			"uid":     user.UID,
 			"balance": balance,
 		}).Debug("User balance updated")
 	}
+
 	c.mu.Lock()
 	c.balances = newBalances
 	c.mu.Unlock()
+
 	return nil
 }
 
@@ -117,7 +120,7 @@ func (c *Collector) collect(ch chan<- prometheus.Metric) {
 	defer c.mu.RUnlock()
 
 	for _, user := range c.config.UserConfig {
-		key := string(user.Region) + ":" + user.Uid
+		key := user.Region + ":" + user.UID
 
 		balance, exists := c.balances[key]
 		if !exists {
@@ -130,7 +133,7 @@ func (c *Collector) collect(ch chan<- prometheus.Metric) {
 			balance,
 			user.Region,
 			user.UUID,
-			user.Uid,
+			user.UID,
 			user.Owner,
 			user.Type,
 			user.Level,

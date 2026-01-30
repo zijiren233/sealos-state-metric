@@ -13,7 +13,7 @@ type DatabaseConfig struct {
 type UserConfig struct {
 	Region string `yaml:"region" json:"region"` // Cloud service region
 	UUID   string `yaml:"uuid"   json:"uuid"`   // User unique identifier
-	Uid    string `yaml:"uid"    json:"uid"`    // User ID
+	UID    string `yaml:"uid"    json:"uid"`    // User ID
 	Owner  string `yaml:"owner"  json:"owner"`  // Account owner
 	Type   string `yaml:"type"   json:"type"`   // User type
 	Level  string `yaml:"level"  json:"level"`  // User level
